@@ -1,0 +1,11 @@
+{
+  "name": "com.axit.uiclassicasync",
+  "displayName": "AXit UI Classic Async",
+  "version": "1.0.1",
+  "unity": "2022.3",
+  "description": "AXit UI Classic Async adapter for Unity.",
+  "author": {
+    "name": "Ngoc Phat",
+    "url": "https://github.com/ngocphat03"
+  }
+}
