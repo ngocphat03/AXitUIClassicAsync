@@ -1,4 +1,4 @@
-# AXitUIClassicAsync
+# AxitUIClassicAsync
 
 A Unity UI framework based on MVP (Model-View-Presenter) pattern with async/await support for managing screens and popups in Unity applications.
 
@@ -64,6 +64,19 @@ Key characteristics:
 
 ## Installation
 
+### Method 1: Install via Git URL (Recommended)
+
+1. Open Unity Package Manager (Window > Package Manager)
+2. Click the **+** button in the top-left corner
+3. Select **Add package from git URL...**
+4. Enter the following URL:
+   ```
+   https://github.com/ngocphat03/Axit.UI.ClassicAsync.git?path=/Assets/Plugins/Axit/PackageAdapters/Axit.UI.ClassicAsync#release
+   ```
+5. Click **Add**
+
+### Method 2: Manual Installation
+
 1. Import the package into your Unity project
 2. Add the required dependencies:
    - UniTask (com.cysharp.unitask)
@@ -104,7 +117,7 @@ The framework includes Unity Editor tools to quickly create screens and popups w
 ### Creating UI Scripts
 
 1. **Right-click in Project window** on any folder
-2. Go to **Create > AXit > UI > Create Classic UI Script**
+2. Go to **Create > Axit > UI > Create Classic UI Script**
 3. **Enter the class name** (e.g., "MainMenu", "Settings", "Inventory")
 4. **Select UI Mode**: Screen or Popup
 5. Click **Create UI Script**
@@ -117,7 +130,7 @@ This will generate a complete script file with:
 
 **Example**: Creating "MainMenu" Screen will generate:
 ```csharp
-using AXitUnityTemplate.UI.Classic.Async;
+using AxitUnityTemplate.UI.Classic.Async;
 
 public class MainMenuModel : BaseScreenModel
 {
@@ -141,7 +154,7 @@ public class MainMenuPresenter : BaseScreenPresenter<MainMenuView, MainMenuModel
 ### Creating UI Prefabs
 
 1. **Right-click in Project window** on any folder
-2. Go to **Create > AXit > UI > Create Classic UI Prefab**
+2. Go to **Create > Axit > UI > Create Classic UI Prefab**
 3. **Enter the prefab name** (should match your script name)
 4. **Select UI Mode**: Screen or Popup
 5. Click **Create UI Prefab**

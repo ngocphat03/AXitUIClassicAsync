@@ -1,5 +1,5 @@
 using UnityEngine.UI;
-using AXitUnityTemplate.UI.Classic.Async;
+using AxitUnityTemplate.UI.Classic.Async;
 
 public class FirstScreenModel : BaseScreenModel
 {

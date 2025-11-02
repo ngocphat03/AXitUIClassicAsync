@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Cysharp.Threading.Tasks;
-using AXitUnityTemplate.UI.Classic.Async;
+using AxitUnityTemplate.UI.Classic.Async;
 
 public class SecondScreenModel : BaseScreenModel
 {

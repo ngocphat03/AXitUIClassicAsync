@@ -1,4 +1,4 @@
-using AXitUnityTemplate.UI.Classic.Async;
+using AxitUnityTemplate.UI.Classic.Async;
 using UnityEngine.UI;
 
 public class SecondPopupModel : BasePopupModel
