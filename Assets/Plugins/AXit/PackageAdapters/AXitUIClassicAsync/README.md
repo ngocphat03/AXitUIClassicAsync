@@ -1,4 +1,4 @@
-# AXitUIClassicAsync
+# Unity UI Framework
 
 A Unity UI framework based on MVP (Model-View-Presenter) pattern with async/await support for managing screens and popups in Unity applications.
 
@@ -8,6 +8,7 @@ A Unity UI framework based on MVP (Model-View-Presenter) pattern with async/awai
 - **Async/Await Support**: Built with UniTask for modern asynchronous programming
 - **Screen Management**: Full-featured screen navigation system
 - **Popup System**: Overlay popup management with stacking support
+- **Secure Access Control**: Internal interface system ensures only ScreenManager can manage UI lifecycle
 - **Dependency Injection Ready**: Compatible with Zenject and VContainer
 - **Transition Animations**: Built-in UI transition support
 - **Resource Management**: Supports both Resources and Addressables loading
@@ -21,6 +22,20 @@ The framework follows the MVP pattern where:
 - **Presenter**: Handles user interactions and coordinates between Model and View
 
 ### Core Components
+
+#### Security Architecture
+**Definition**: The framework implements a secure access control system using internal interfaces to ensure that only the ScreenManager can control UI lifecycle methods.
+
+Key characteristics:
+- `IUiManagerAccess` internal interface restricts access to critical methods
+- Explicit interface implementation prevents direct method calls
+- Only ScreenManager can call: `SetView`, `SetViewParent`, `OpenView`, `CloseView`, `SetModel`
+- Compile-time safety prevents unauthorized access
+- High performance without runtime checks
+
+Components:
+- `IUiManagerAccess`: Internal interface for ScreenManager-only access
+- `IUiPresenter`: Public interface with safe methods only
 
 #### Screen System
 **Definition**: A Screen is a main interface that can only be displayed one at a time. When a new screen is opened, it replaces the current screen. When a screen is closed, the previous screen is automatically restored.
@@ -104,7 +119,7 @@ The framework includes Unity Editor tools to quickly create screens and popups w
 ### Creating UI Scripts
 
 1. **Right-click in Project window** on any folder
-2. Go to **Create > AXit > UI > Create Classic UI Script**
+2. Go to **Create > UnityTemplate > UI > Create Classic UI Script**
 3. **Enter the class name** (e.g., "MainMenu", "Settings", "Inventory")
 4. **Select UI Mode**: Screen or Popup
 5. Click **Create UI Script**
@@ -117,7 +132,7 @@ This will generate a complete script file with:
 
 **Example**: Creating "MainMenu" Screen will generate:
 ```csharp
-using AXitUnityTemplate.UI.Classic.Async;
+using UnityTemplate.UI;
 
 public class MainMenuModel : BaseScreenModel
 {
@@ -141,7 +156,7 @@ public class MainMenuPresenter : BaseScreenPresenter<MainMenuView, MainMenuModel
 ### Creating UI Prefabs
 
 1. **Right-click in Project window** on any folder
-2. Go to **Create > AXit > UI > Create Classic UI Prefab**
+2. Go to **Create > UnityTemplate > UI > Create Classic UI Prefab**
 3. **Enter the prefab name** (should match your script name)
 4. **Select UI Mode**: Screen or Popup
 5. Click **Create UI Prefab**
@@ -205,12 +220,12 @@ public class MainMenuPresenter : BaseScreenPresenter<MainMenuView, MainMenuModel
 
     private async void OnPlayClicked()
     {
-        await ScreenManager.Instance.OpenScreen<GamePresenter, GameModel>();
+        await ScreenManager.Instance.OpenScreenAsync<GamePresenter, GameModel>();
     }
 
     private async void OnSettingsClicked()
     {
-        await ScreenManager.Instance.OpenPopup<SettingsPresenter, SettingsModel>();
+        await ScreenManager.Instance.OpenPopupAsync<SettingsPresenter, SettingsModel>();
     }
 
     public override void OnDestroy() { }
@@ -270,6 +285,46 @@ public class SettingsPresenter : BasePopupPresenter<SettingsView, SettingsModel>
 
 ## API Reference
 
+### Security Architecture
+
+The framework implements a secure access control system to prevent unauthorized access to critical UI lifecycle methods.
+
+#### Access Control
+
+The framework uses **internal interfaces** and **explicit interface implementation** to ensure only `ScreenManager` can control UI lifecycle:
+
+```csharp
+// These methods are NOT accessible directly:
+presenter.SetView(view);        // Compile error
+presenter.SetViewParent(parent); // Compile error
+presenter.OpenView();           // Compile error
+presenter.CloseView();          // Compile error
+presenter.SetModel(model);      // Compile error
+
+// Only ScreenManager can access these via IUiManagerAccess:
+((IUiManagerAccess)presenter).SetView(view);
+((IUiManagerAccess)presenter).SetViewParent(parent);
+await ((IUiManagerAccess)presenter).OpenView();
+await ((IUiManagerAccess)presenter).CloseView();
+((IUiManagerAccess)presenter).SetModel(model);
+```
+
+#### Safe Methods Available to Presenters
+
+```csharp
+// Safe methods that Presenters can use:
+presenter.OnCloseView();        // Close from within Presenter
+presenter.EUiStatus;           // Check current status
+presenter.CurrentTransform;    // Get transform reference
+```
+
+#### Key Interfaces
+
+- **`IUiPresenter`**: Public interface with safe methods only
+- **`IUiManagerAccess`**: Internal interface for ScreenManager exclusive access
+- **`IScreenPresenter`**: Screen-specific public interface
+- **`IPopupPresenter`**: Popup-specific public interface
+
 ### ScreenManager
 
 The main entry point for screen and popup management.
@@ -278,12 +333,12 @@ The main entry point for screen and popup management.
 
 ```csharp
 // Open a new screen
-await ScreenManager.Instance.OpenScreen<TPresenter, TModel>();
-await ScreenManager.Instance.OpenScreen<TPresenter, TModel>(model);
+await ScreenManager.Instance.OpenScreenAsync<TPresenter, TModel>();
+await ScreenManager.Instance.OpenScreenAsync<TPresenter, TModel>(model);
 
 // Open a popup
-await ScreenManager.Instance.OpenPopup<TPresenter, TModel>();
-await ScreenManager.Instance.OpenPopup<TPresenter, TModel>(model);
+await ScreenManager.Instance.OpenPopupAsync<TPresenter, TModel>();
+await ScreenManager.Instance.OpenPopupAsync<TPresenter, TModel>(model);
 
 // Close current screen
 ScreenManager.Instance.CloseCurrentScreen();
@@ -306,7 +361,7 @@ Required overrides:
 - `void OnDisable()`: Called when screen becomes inactive
 - `void OnDestroy()`: Called when screen is destroyed
 
-**Important Note**: To close a screen from within its Presenter, call `OnCloseView()` method, not `CloseView()`.
+**Important Note**: To close a screen from within its Presenter, call `OnCloseView()` method. The framework's security system prevents direct access to `CloseView()` - only `ScreenManager` can call this method through the internal interface system.
 
 #### BasePopupPresenter<TView, TModel>
 
@@ -317,7 +372,7 @@ Required overrides:
 - `void OnDisable()`: Called when popup becomes inactive
 - `void OnDestroy()`: Called when popup is destroyed
 
-**Important Note**: To close a popup from within its Presenter, call `OnCloseView()` method, not `CloseView()`.
+**Important Note**: To close a popup from within its Presenter, call `OnCloseView()` method. The framework's security system prevents direct access to `CloseView()` - only `ScreenManager` can call this method through the internal interface system.
 
 ### Attributes
 
@@ -364,7 +419,7 @@ var gameModel = new GameModel
 };
 
 // Open screen with data
-await ScreenManager.Instance.OpenScreen<GamePresenter, GameModel>(gameModel);
+await ScreenManager.Instance.OpenScreenAsync<GamePresenter, GameModel>(gameModel);
 ```
 
 ## Sample Project Structure
@@ -404,10 +459,11 @@ Sample/
 1. **Separation of Concerns**: Keep business logic in Models, UI logic in Presenters, and only UI components in Views
 2. **Async/Await**: Use async methods for screen transitions to ensure smooth UI flow
 3. **Memory Management**: Always unsubscribe from events in `OnDisable()` or `OnDestroy()`
-4. **Closing Views**: Use `OnCloseView()` method to close screens or popups from within their Presenters, not `CloseView()`
+4. **Security**: Use `OnCloseView()` method to close screens or popups from within their Presenters. The framework's security system prevents direct access to lifecycle methods.
 5. **Transition Animations**: Configure Timeline assets for smooth open/close animations, or leave them empty for instant transitions
 6. **Resource Paths**: Use consistent naming conventions for prefab paths (compatible with both Resources and Addressables systems)
 7. **Model Validation**: Validate model data in Presenter's `Awake()` method
+8. **Access Control**: Never attempt to directly call `SetView`, `SetViewParent`, `OpenView`, `CloseView`, or `SetModel` - these are managed exclusively by `ScreenManager`
 
 **Path Configuration Notes:**
 - The framework automatically detects and switches between Resources and Addressables loading based on project configuration
@@ -422,6 +478,8 @@ Sample/
 1. **Screen not opening**: Check if the `ScreenPath` or `PopupPath` matches the actual prefab location (works with both Resources and Addressables)
 2. **Memory leaks**: Ensure all event listeners are properly removed in `OnDisable()`
 3. **Missing dependencies**: Verify UniTask is installed and properly imported
+4. **Access denied errors**: If you get compile errors trying to call `SetView`, `OpenView`, `CloseView`, etc., remember these methods are restricted to `ScreenManager` only. Use `OnCloseView()` to close from within Presenters.
+5. **Interface implementation errors**: Make sure your Presenters inherit from the correct base classes (`BaseScreenPresenter` or `BasePopupPresenter`)
 
 ### Debug Tips
 

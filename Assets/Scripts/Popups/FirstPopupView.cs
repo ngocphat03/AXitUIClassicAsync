@@ -21,7 +21,7 @@ public class FirstPopupPresenter : BasePopupPresenter<FirstPopupView, FirstPopup
     {
         this.View.buttonOpenSecondPopup.onClick.AddListener(() =>
         {
-            _ = this.screenManager.OpenPopup<SecondPopupPresenter, SecondPopupModel>();
+            _ = this.screenManager.OpenPopupAsync<SecondPopupPresenter, SecondPopupModel>();
         });
         
         this.View.buttonClose.onClick.AddListener(() =>

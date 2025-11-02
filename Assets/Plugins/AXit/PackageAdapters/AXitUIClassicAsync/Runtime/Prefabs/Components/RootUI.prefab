@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 2060534047901033160}
   - component: {fileID: 1198561119213133591}
   - component: {fileID: 534352544144342921}
+  - component: {fileID: 5614496603785739244}
   m_Layer: 0
   m_Name: UICamera
   m_TagString: MainCamera
@@ -103,7 +104,7 @@ GameObject:
   - component: {fileID: 6058861972651382839}
   - component: {fileID: 8960373916692269535}
   m_Layer: 5
-  m_Name: UiOpen
+  m_Name: ScreenOpen
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -147,7 +148,7 @@ GameObject:
   - component: {fileID: 8499939283434766620}
   - component: {fileID: 4669083150438857400}
   m_Layer: 5
-  m_Name: UiClose
+  m_Name: ScreenClose
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

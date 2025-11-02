@@ -1,7 +1,6 @@
 ﻿namespace AXitUnityTemplate.UI.Classic.Async
 {
     using System;
-    using Cysharp.Threading.Tasks;
     using UnityEngine;
 
     public interface IUiPresenter
@@ -9,22 +8,27 @@
         public EUiStatus EUiStatus { get; }
 
         public Transform CurrentTransform { get; }
+        
         public Action OnCloseView { get; set; }
+        
+        /// <summary>
+        /// Called when the view is initialized.
+        /// </summary>
+        public virtual void Awake(){}
 
-        public void SetViewParent(Transform parent);
+        /// <summary>
+        /// Called when the view is enabled.
+        /// </summary>
+        public virtual void OnEnable(){}
 
-        public UniTask OpenView();
+        /// <summary>
+        /// Called when the view is disabled.
+        /// </summary>
+        public virtual void OnDisable(){}
 
-        public UniTask CloseView();
-
-        public void SetModel(object modelObject);
-
-        public void Awake();
-
-        public void OnEnable();
-
-        public void OnDisable();
-
-        public void OnDestroy();
+        /// <summary>
+        /// Called when the view is destroyed.
+        /// </summary>
+        public virtual void OnDestroy(){}
     }
 }

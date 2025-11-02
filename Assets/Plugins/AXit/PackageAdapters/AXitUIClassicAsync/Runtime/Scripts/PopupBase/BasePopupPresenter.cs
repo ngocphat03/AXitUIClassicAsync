@@ -4,7 +4,7 @@
     using UnityEngine;
     using Cysharp.Threading.Tasks;
 
-    public abstract class BasePopupPresenter<TView, TModel> : IPopupPresenter where TView : BasePopupView where TModel : BasePopupModel, new()
+    public abstract class BasePopupPresenter<TView, TModel> : IPopupPresenter, IUiManagerAccess where TView : BasePopupView where TModel : BasePopupModel, new()
     {
         private Action<IUiPresenter> onCloseView;
 
@@ -23,9 +23,12 @@
 
         public abstract string PopupPath { get; }
 
-        public void SetViewParent(Transform parent) { this.View.transform.SetParent(parent); }
+        void IUiManagerAccess.SetViewParent(Transform parent)
+        {
+            this.View.transform.SetParent(parent);
+        }
 
-        public void SetView(IPopupView viewInstance, Action<IUiPresenter> onClose = null)
+        void IUiManagerAccess.SetView(object viewInstance)
         {
             this.View = viewInstance as TView;
 
@@ -35,7 +38,7 @@
             this.Awake();
         }
 
-        public async UniTask OpenView()
+        async UniTask IUiManagerAccess.OpenViewAsync()
         {
             if (this.EUiStatus is EUiStatus.Opened or EUiStatus.Opening)
             {
@@ -46,15 +49,15 @@
             this.View.ViewRoot.blocksRaycasts = true;
             this.EUiStatus                    = EUiStatus.Opening;
             this.OnEnable();
-            await this.View.Open();
+            await this.View.OpenAsync();
             this.EUiStatus = EUiStatus.Opened;
         }
 
-        public async UniTask CloseView()
+        async UniTask IUiManagerAccess.CloseViewAsync()
         {
             if (this.EUiStatus is EUiStatus.Closed or EUiStatus.Closing)
             {
-                Debug.LogWarning("Screen is already closed");
+                Debug.LogWarning("Popup is already closed");
 
                 return;
             }
@@ -62,16 +65,18 @@
             this.View.ViewRoot.blocksRaycasts = false;
             this.EUiStatus                    = EUiStatus.Closing;
 
-            await this.View.Close();
+            await this.View.CloseAsync();
             this.EUiStatus = EUiStatus.Closed;
             this.OnDisable();
         }
 
-        public void SetModel(object modelObject)
+        void IUiManagerAccess.SetModel(object modelObject)
         {
             switch (modelObject)
             {
                 case null:
+                    if (this.Model != null) break;
+                    
                     this.Model = new TModel();
                     break;
                 case TModel tModel:
@@ -82,13 +87,13 @@
                     return;
             }
         }
+        
+        public virtual void Awake(){}
 
-        public abstract void Awake();
+        public virtual void OnEnable(){}
 
-        public abstract void OnEnable();
+        public virtual void OnDisable(){}
 
-        public abstract void OnDisable();
-
-        public abstract void OnDestroy();
+        public virtual void OnDestroy(){}
     }
 }

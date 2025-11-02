@@ -37,18 +37,18 @@
             this.OnViewReady?.Invoke();
         }
 
-        public async UniTask Open()
+        public async UniTask OpenAsync()
         {
             this.UpdateAlpha(1f);
 
-            await this.UiTransition.PlayIntroAnimation();
+            await this.UiTransition.PlayIntroAnimationAsync();
 
             this.OnOpen?.Invoke();
         }
 
-        public async UniTask Close()
+        public async UniTask CloseAsync()
         {
-            await this.UiTransition.PlayOutroAnimation();
+            await this.UiTransition.PlayOutroAnimationAsync();
 
             this.UpdateAlpha(0);
             this.OnClose?.Invoke();
@@ -66,5 +66,14 @@
             this.ViewRoot.alpha          = value;
             this.ViewRoot.blocksRaycasts = this.blockRaycastHit && value >= 1;
         }
+        
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            this.UiTransition = this.GetComponent<UiTransition>();
+            this.RectTransform = this.GetComponent<RectTransform>();
+            this.ViewRoot = this.GetComponent<CanvasGroup>();
+        }
+#endif
     }
 }

@@ -28,19 +28,19 @@
             }
         }
 
-        public async UniTask PlayIntroAnimation()
+        public async UniTask PlayIntroAnimationAsync()
         {
             this.SetInputLock(false);
-            await this.PlayAnimation(this.intro);
+            await this.PlayAnimationAsync(this.intro);
         }
 
-        public async UniTask PlayOutroAnimation()
+        public async UniTask PlayOutroAnimationAsync()
         {
-            await this.PlayAnimation(this.outro);
+            await this.PlayAnimationAsync(this.outro);
             this.SetInputLock(true);
         }
 
-        private async UniTask PlayAnimation(PlayableDirector animationPlay)
+        private async UniTask PlayAnimationAsync(PlayableDirector animationPlay)
         {
             if (this.isPlaying || !animationPlay) return;
             this.isPlaying = true;
@@ -56,7 +56,7 @@
         {
             if (!this.eventSystem)
             {
-                Debug.LogWarning("EventSystem is not set, cannot lock input.");
+                Debug.LogWarning("EventSystem is not set, cannot lock input. In view:" + this.gameObject.name);
                 return;
             }
 

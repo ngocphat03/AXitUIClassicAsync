@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/SampleUIClassicAsync.unity
+    guid: c7d6ca97c47e9794b9cbf4b4795c24d7
   m_configObjects: {}

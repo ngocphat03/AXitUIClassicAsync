@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Linq;
-    
+using AXitUnityTemplate.UI.Classic.Async;
+
 #if VCONTAINER
 using VContainer;
 #endif
-
-using AXitUnityTemplate.UI.Classic.Async;
 
 public class ScreenFactory
 {
@@ -16,13 +15,16 @@ public class ScreenFactory
     {
         this.diContainer = diContainer;
     }
-
 #elif VCONTAINER
     private readonly IObjectResolver resolver;
 
     public ScreenFactory(IObjectResolver resolver)
     {
         this.resolver = resolver;
+    }
+#else
+    public ScreenFactory()
+    {
     }
 #endif
 

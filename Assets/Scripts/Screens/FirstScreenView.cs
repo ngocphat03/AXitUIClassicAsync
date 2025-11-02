@@ -30,7 +30,7 @@ public class FirstScreenPresenter : BaseScreenPresenter<FirstScreenView, FirstSc
 
     private async void OnButtonOpenSecondScreenClicked()
     {
-        await this.screenManager.OpenScreen<SecondScreenPresenter, SecondScreenModel>(new SecondScreenModel()
+        await this.screenManager.OpenScreenAsync<SecondScreenPresenter, SecondScreenModel>(new SecondScreenModel()
             {
                 Message = "Opened from First Screen"
             });
@@ -38,12 +38,12 @@ public class FirstScreenPresenter : BaseScreenPresenter<FirstScreenView, FirstSc
 
     private async void OnButtonOpenFirstPopupClicked()
     {
-        await this.screenManager.OpenPopup<FirstPopupPresenter, FirstPopupModel>();
+        await this.screenManager.OpenPopupAsync<FirstPopupPresenter, FirstPopupModel>();
     }
 
     private async void OnButtonOpenSecondPopupClicked()
     {
-        await this.screenManager.OpenPopup<SecondPopupPresenter, SecondPopupModel>();
+        await this.screenManager.OpenPopupAsync<SecondPopupPresenter, SecondPopupModel>();
     }
 
     public override void OnDisable()

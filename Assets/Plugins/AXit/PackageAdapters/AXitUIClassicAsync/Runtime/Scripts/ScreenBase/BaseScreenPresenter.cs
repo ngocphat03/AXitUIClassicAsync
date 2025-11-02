@@ -4,7 +4,7 @@ namespace AXitUnityTemplate.UI.Classic.Async
     using UnityEngine;
     using Cysharp.Threading.Tasks;
 
-    public abstract class BaseScreenPresenter<TView, TModel> : IScreenPresenter where TView : BaseScreenView where TModel : BaseScreenModel, new()
+    public abstract class BaseScreenPresenter<TView, TModel> : IScreenPresenter, IUiManagerAccess where TView : BaseScreenView where TModel : BaseScreenModel, new()
     {
         private Action<IUiPresenter> onCloseView;
 
@@ -21,9 +21,12 @@ namespace AXitUnityTemplate.UI.Classic.Async
 
         public abstract string ScreenPath { get; }
 
-        public void SetViewParent(Transform parent) { this.View.transform.SetParent(parent); }
+        void IUiManagerAccess.SetViewParent(Transform parent)
+        {
+            this.View.transform.SetParent(parent);
+        }
 
-        public void SetView(IScreenView viewInstance, Action<IUiPresenter> onClose = null)
+        void IUiManagerAccess.SetView(object viewInstance)
         {
             this.View = viewInstance as TView;
 
@@ -33,7 +36,7 @@ namespace AXitUnityTemplate.UI.Classic.Async
             this.Awake();
         }
 
-        public async UniTask OpenView()
+        async UniTask IUiManagerAccess.OpenViewAsync()
         {
             if (this.EUiStatus is EUiStatus.Opened or EUiStatus.Opening)
             {
@@ -44,11 +47,11 @@ namespace AXitUnityTemplate.UI.Classic.Async
             this.View.ViewRoot.blocksRaycasts = true;
             this.EUiStatus                    = EUiStatus.Opening;
             this.OnEnable();
-            await this.View.Open();
+            await this.View.OpenAsync();
             this.EUiStatus = EUiStatus.Opened;
         }
 
-        public async UniTask CloseView()
+        async UniTask IUiManagerAccess.CloseViewAsync()
         {
             if (this.EUiStatus is EUiStatus.Closed or EUiStatus.Closing)
             {
@@ -60,16 +63,18 @@ namespace AXitUnityTemplate.UI.Classic.Async
             this.View.ViewRoot.blocksRaycasts = false;
             this.EUiStatus                    = EUiStatus.Closing;
 
-            await this.View.Close();
+            await this.View.CloseAsync();
             this.EUiStatus = EUiStatus.Closed;
             this.OnDisable();
         }
 
-        public void SetModel(object modelObject)
+        void IUiManagerAccess.SetModel(object modelObject)
         {
             switch (modelObject)
             {
                 case null:
+                    if (this.Model != null) break;
+                    
                     this.Model = new TModel();
                     break;
                 case TModel tModel:
@@ -81,12 +86,12 @@ namespace AXitUnityTemplate.UI.Classic.Async
             }
         }
 
-        public abstract void Awake();
+        public virtual void Awake(){}
 
-        public abstract void OnEnable();
+        public virtual void OnEnable(){}
 
-        public abstract void OnDisable();
+        public virtual void OnDisable(){}
 
-        public abstract void OnDestroy();
+        public virtual void OnDestroy(){}
     }
 }

@@ -12,9 +12,9 @@
         public event Action  OnClose;
         public event Action  OnDestroy;
 
-        public UniTask Open();
+        public UniTask OpenAsync();
 
-        public UniTask Close();
+        public UniTask CloseAsync();
 
         public void DestroySelf();
     }

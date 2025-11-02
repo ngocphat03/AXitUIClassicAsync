@@ -11,11 +11,13 @@
     using UnityEngine.AddressableAssets;
 #endif
 
-    public class ScreenManager : MonoBehaviour
+    public sealed class ScreenManager : MonoBehaviour
     {
         [field: SerializeField] public Transform OpenedScreenParent { get; private set; }
 
         [field: SerializeField] public Transform ClosedScreenParent { get; private set; }
+        
+        [field: SerializeField] public bool AutoCreateScreenFactory { get; private set; } = false;
 
 #if ZENJECT
 #elif VCONTAINER
@@ -27,6 +29,7 @@
         public static ScreenManager Instance { get; private set; }
 
         private readonly Dictionary<Type, IScreenPresenter> screensPresenterLoaded = new(10);
+        private readonly List<GameObject> uisViewLoaded = new(10);
 
         private IScreenPresenter CurrentScreen { get; set; }
 
@@ -36,7 +39,20 @@
 
         public static Func<ScreenManager> Resolve = () => Instance;
 
+#if VCONTAINER
+        [VContainer.Inject]
+        private void VContainerAwake()
+        {
+            this.Initialize();
+        }
+#else
         private void Awake()
+        {
+            this.Initialize();
+        }
+#endif
+        
+        private void Initialize()
         {
             if (ScreenManager.Instance != null && ScreenManager.Instance != this)
             {
@@ -46,11 +62,16 @@
             }
 
             ScreenManager.Instance = this;
-        }
 
-        private void Start()
-        {
-            this.FindScreensInScene();
+#if VCONTAINER
+            // Check if the screen factory is set, if not and AutoCreateScreenFactory is true, create a new instance
+            if (this.screenFactory == null && this.AutoCreateScreenFactory)
+            {
+                this.screenFactory = new ScreenFactory(null);
+            }
+#endif
+
+            _ = UniTask.DelayFrame(1).ContinueWith(this.FindScreensInScene);
         }
 
         private void OnDestroy()
@@ -72,11 +93,11 @@
 
         #region SCREEN
         
-        public async UniTask<TPresenter> OpenScreen<TPresenter, TModel>(TModel model = default) where TPresenter : IScreenPresenter where TModel : IScreenModel
+        public async UniTask<TPresenter> OpenScreenAsync<TPresenter, TModel>(TModel model = default) where TPresenter : IScreenPresenter where TModel : IScreenModel
         {
-            await this.CloseScreen(this.CurrentScreen?.GetType(), openLastScreen: false);
+            var presenter = await this.GetScreenAsync<TPresenter>(model);
 
-            var presenter = await this.GetScreen<TPresenter>(model);
+            await this.CloseScreenAsync(this.CurrentScreen?.GetType(), openLastScreen: false);
 
             var screenOpen = this.historyScreen.Find(x => x.screen.GetType() == presenter.GetType());
 
@@ -89,14 +110,18 @@
             {
                 screenOpen.lastScreen = this.CurrentScreen;
             }
-
-            presenter.SetViewParent(this.OpenedScreenParent);
+            ((IUiManagerAccess)presenter).SetViewParent(this.OpenedScreenParent);
             this.CurrentScreen = presenter;
-            await this.CurrentScreen.OpenView();
+            await ((IUiManagerAccess)this.CurrentScreen).OpenViewAsync();
             return (TPresenter)this.CurrentScreen;
         }
 
-        private async UniTask CloseScreen(Type typeScreenPresenter, bool openLastScreen = true)
+        public UniTask CloseScreenAsync<TPresenter>() where TPresenter : IScreenPresenter
+        {
+            return this.CloseScreenAsync(typeof(TPresenter), openLastScreen: true);
+        }
+        
+        public async UniTask CloseScreenAsync(Type typeScreenPresenter, bool openLastScreen = true)
         {
             if (typeScreenPresenter == null) return;
 
@@ -106,8 +131,8 @@
                 return;
             }
 
-            await presenter.CloseView();
-            presenter.SetViewParent(this.ClosedScreenParent);
+            await ((IUiManagerAccess)presenter).CloseViewAsync();
+            ((IUiManagerAccess)presenter).SetViewParent(this.ClosedScreenParent);
             
             if (!openLastScreen) return;
             
@@ -118,18 +143,18 @@
                 this.CurrentScreen = lastScreen;
                 if (this.CurrentScreen == null) return;
 
-                this.CurrentScreen.SetViewParent(this.OpenedScreenParent);
-                await this.CurrentScreen.OpenView();
+                ((IUiManagerAccess)this.CurrentScreen).SetViewParent(this.OpenedScreenParent);
+                await ((IUiManagerAccess)this.CurrentScreen).OpenViewAsync();
             }
         }
 
-        public async UniTask<T> GetScreen<T>(IScreenModel model) where T : IScreenPresenter
+        public async UniTask<T> GetScreenAsync<T>(IScreenModel model = null) where T : IScreenPresenter
         {
             var screenType = typeof(T);
 
             if (this.screensPresenterLoaded.TryGetValue(screenType, out var screenPresenter))
             {
-                screenPresenter.SetModel(model);
+                ((IUiManagerAccess)screenPresenter).SetModel(model);
                 return (T)screenPresenter;
             }
 
@@ -142,13 +167,9 @@
             }
 
 #if SCREEN_CLASSIC_ADDRESSABLE
-            var loadOperation = Addressables.LoadAssetAsync<GameObject>(screenPresenter.ScreenPath);
-            await loadOperation.ToUniTask();
-            var loadedAsset = loadOperation.Result;
+            var loadedAsset = await Addressables.LoadAssetAsync<GameObject>(screenPresenter.ScreenPath);
 #else
-            var loadOperation = Resources.LoadAsync<GameObject>(screenPresenter.ScreenPath);
-            await loadOperation.ToUniTask();
-            var loadedAsset = loadOperation.asset as GameObject;
+            var loadedAsset = await Resources.LoadAsync<GameObject>(screenPresenter.ScreenPath).ToUniTask() as GameObject;
 #endif
 
             if (loadedAsset == null)
@@ -165,9 +186,11 @@
                 return default;
             }
 
-            screenPresenter.SetModel(model);
-            screenPresenter.OnCloseView += () => this.CloseScreen(screenPresenter.GetType(), openLastScreen: true).Forget();
-            screenPresenter.SetView(viewInstance);
+            this.uisViewLoaded.Add(viewObject);
+
+            ((IUiManagerAccess)screenPresenter).SetModel(model);
+            screenPresenter.OnCloseView += () => this.CloseScreenAsync(screenPresenter.GetType(), openLastScreen: true).Forget();
+            ((IUiManagerAccess)screenPresenter).SetView(viewInstance);
             this.screensPresenterLoaded[screenType] = screenPresenter;
             return (T)screenPresenter;
         }
@@ -176,20 +199,20 @@
 
         #region POPUP
         
-        public async UniTask<TPresenter> OpenPopup<TPresenter, TModel>(TModel model = default) where TPresenter : IPopupPresenter where TModel : IPopupModel
+        public async UniTask<TPresenter> OpenPopupAsync<TPresenter, TModel>(TModel model = default) where TPresenter : IPopupPresenter where TModel : IPopupModel
         {
-            var presenter = await this.GetPopup<TPresenter>(model);
-            presenter.SetViewParent(this.OpenedScreenParent);
-            await presenter.OpenView();
+            var presenter = await this.GetPopupAsync<TPresenter>(model);
+            ((IUiManagerAccess)presenter).SetViewParent(this.OpenedScreenParent);
+            await ((IUiManagerAccess)presenter).OpenViewAsync();
             return presenter;
         }
 
-        public async UniTask ClosePopup<TPresenter>() where TPresenter : IPopupPresenter
+        public async UniTask ClosePopupAsync<TPresenter>() where TPresenter : IPopupPresenter
         {
-            await this.ClosePopup(typeof(TPresenter));
+            await this.ClosePopupAsync(typeof(TPresenter));
         }
 
-        public async UniTask ClosePopup(Type typePresenter)
+        public async UniTask ClosePopupAsync(Type typePresenter)
         {
             if (!this.popupsPresenterLoaded.TryGetValue(typePresenter, out var presenter))
             {
@@ -197,17 +220,17 @@
                 return;
             }
 
-            await presenter.CloseView();
-            presenter.SetViewParent(this.ClosedScreenParent);
+            await ((IUiManagerAccess)presenter).CloseViewAsync();
+            ((IUiManagerAccess)presenter).SetViewParent(this.ClosedScreenParent);
         }
 
-        public async UniTask<T> GetPopup<T>(IPopupModel model) where T : IPopupPresenter
+        public async UniTask<T> GetPopupAsync<T>(IPopupModel model) where T : IPopupPresenter
         {
             var popupType = typeof(T);
 
             if (this.popupsPresenterLoaded.TryGetValue(popupType, out var popupPresenter))
             {
-                popupPresenter.SetModel(model);
+                ((IUiManagerAccess)popupPresenter).SetModel(model);
                 return (T)popupPresenter;
             }
 
@@ -220,13 +243,9 @@
             }
 
 #if SCREEN_CLASSIC_ADDRESSABLE
-            var loadOperation = Addressables.LoadAssetAsync<GameObject>(popupPresenter.PopupPath);
-            await loadOperation.ToUniTask();
-            var loadedAsset = loadOperation.Result;
+            var loadedAsset = await Addressables.LoadAssetAsync<GameObject>(popupPresenter.PopupPath);
 #else
-            var loadOperation = Resources.LoadAsync<GameObject>(popupPresenter.PopupPath);
-            await loadOperation.ToUniTask();
-            var loadedAsset = loadOperation.asset as GameObject;
+            var loadedAsset = await Resources.LoadAsync<GameObject>(popupPresenter.PopupPath).ToUniTask() as GameObject;
 #endif
 
             if (loadedAsset == null)
@@ -242,10 +261,12 @@
                 Debug.LogError($"The {popupPresenter.PopupPath} does not have a view component");
                 return default;
             }
+            
+            this.uisViewLoaded.Add(viewObject);
 
-            popupPresenter.SetModel(model);
-            popupPresenter.OnCloseView += () => this.ClosePopup(typeof(T)).Forget();
-            popupPresenter.SetView(viewInstance);
+            ((IUiManagerAccess)popupPresenter).SetModel(model);
+            popupPresenter.OnCloseView += () => this.ClosePopupAsync(typeof(T)).Forget();
+            ((IUiManagerAccess)popupPresenter).SetView(viewInstance);
             this.popupsPresenterLoaded[popupType] = popupPresenter;
             return (T)popupPresenter;
         }
@@ -256,12 +277,12 @@
         {
             foreach (var screen in this.screensPresenterLoaded)
             {
-                this.CloseScreen(screen.Value.GetType(), openLastScreen: false).Forget();
+                this.CloseScreenAsync(screen.Value.GetType(), openLastScreen: false).Forget();
             }
 
             foreach (var popup in this.popupsPresenterLoaded)
             {
-                this.ClosePopup(popup.Value.GetType()).Forget();
+                this.ClosePopupAsync(popup.Value.GetType()).Forget();
             }
 
             this.CurrentScreen = null;
@@ -270,91 +291,106 @@
         private void FindScreensInScene()
         {
             var allScreens = this.OpenedScreenParent.GetComponentsInChildren<IScreenView>(true)
-                                 .Concat(this.ClosedScreenParent.GetComponentsInChildren<IScreenView>(true)).ToArray();
+                .Concat(this.ClosedScreenParent.GetComponentsInChildren<IScreenView>(true)).ToArray();
 
             var allPopups = this.OpenedScreenParent.GetComponentsInChildren<IPopupView>(true)
-                                .Concat(this.ClosedScreenParent.GetComponentsInChildren<IPopupView>(true)).ToArray();
+                .Concat(this.ClosedScreenParent.GetComponentsInChildren<IPopupView>(true)).ToArray();
 
-            var firstScreen = this.OpenedScreenParent.childCount > 0
-                ? this.OpenedScreenParent.GetChild(0)
-                      .GetComponent<IScreenView>()
-                      .GetType()
-                      .GetCustomAttribute<ViewInitInSceneAttribute>(inherit: false)
-                      ?.PresenterType
-                : null;
+            var loadedViews = new HashSet<GameObject>(this.uisViewLoaded);
+
+            var firstScreenType = GetFirstScreenType();
 
             foreach (var view in allScreens)
             {
-                var viewType = view.GetType();
-                var attr     = viewType.GetCustomAttribute<ViewInitInSceneAttribute>(inherit: false);
-
-                if (attr == null)
-                {
-                    Debug.LogError($"The {viewType.Name} does not have a ViewInitInSceneAttribute, skipping initialization.");
-                    continue;
-                }
-
-                var presenterType   = attr.PresenterType;
-                var screenPresenter = this.screenFactory.CreateUiPresenter(presenterType);
-
-                switch (screenPresenter)
-                {
-                    case null:
-                        Debug.LogError($"The {presenterType.Name} screen presenter does not exist for view {viewType.Name}");
-                        continue;
-                    case IScreenPresenter presenter:
-                        this.screensPresenterLoaded[presenterType] = presenter;
-                        presenter.SetModel(null);
-
-                        presenter.OnCloseView += () => this.CloseScreen(presenter.GetType(), openLastScreen: true).Forget();
-                        presenter.SetView(view);
-                        this.historyScreen.Add((presenter, null));
-
-                        if (firstScreen != null && screenPresenter.GetType() == firstScreen)
-                        {
-                            presenter.OpenView().Forget();
-                            this.CurrentScreen = presenter;
-                        }
-
-                        break;
-                    default:
-                        Debug.LogError($"The {presenterType.Name} screen presenter is not a valid type for view {viewType.Name}");
-                        break;
-                }
+                if (loadedViews.Contains(((MonoBehaviour)view).gameObject)) continue;
+                InitializeScreenView(view, firstScreenType);
             }
 
             foreach (var view in allPopups)
             {
-                var viewType = view.GetType();
-                var attr     = viewType.GetCustomAttribute<ViewInitInSceneAttribute>(inherit: false);
-
-                if (attr == null)
-                {
-                    Debug.LogError($"The {viewType.Name} does not have a ViewInitInSceneAttribute, skipping initialization.");
-                    continue;
-                }
-
-                var presenterType  = attr.PresenterType;
-                var popupPresenter = this.screenFactory.CreateUiPresenter(presenterType);
-
-                switch (popupPresenter)
-                {
-                    case null:
-                        Debug.LogError($"The {presenterType.Name} popup presenter does not exist for view {viewType.Name}");
-                        continue;
-                    case IPopupPresenter presenter:
-                        this.popupsPresenterLoaded[presenterType] = presenter;
-                        presenter.SetModel(null);
-
-                        presenter.OnCloseView += () => this.ClosePopup(presenter.GetType()).Forget();
-                        presenter.SetView(view);
-
-                        break;
-                    default:
-                        Debug.LogError($"The {presenterType.Name} popup presenter is not a valid type for view {viewType.Name}");
-                        break;
-                }
+                InitializePopupView(view);
             }
+        }
+
+        private Type GetFirstScreenType()
+        {
+            return this.OpenedScreenParent.childCount > 0
+                ? this.OpenedScreenParent.GetChild(0)
+                    .GetComponent<IScreenView>()?
+                    .GetType()
+                    .GetCustomAttribute<ViewInitInSceneAttribute>(inherit: false)
+                    ?.PresenterType
+                : null;
+        }
+
+        private void InitializeScreenView(IScreenView view, Type firstScreenType)
+        {
+            var viewType = view.GetType();
+            var attr = viewType.GetCustomAttribute<ViewInitInSceneAttribute>(inherit: false);
+
+            if (attr == null)
+            {
+                Debug.LogError($"The {viewType.Name} does not have a ViewInitInSceneAttribute, skipping initialization.");
+                return;
+            }
+
+            var presenterType = attr.PresenterType;
+            var presenterInstance = this.screenFactory.CreateUiPresenter(presenterType);
+
+            if (presenterInstance is not IScreenPresenter presenter)
+            {
+                Debug.LogError(presenterInstance == null
+                    ? $"The {presenterType.Name} screen presenter does not exist for view {viewType.Name}"
+                    : $"The {presenterType.Name} screen presenter is not a valid type for view {viewType.Name}");
+                return;
+            }
+
+            this.screensPresenterLoaded[presenterType] = presenter;
+            ((IUiManagerAccess)presenter).SetModel(null);
+            ((IUiManagerAccess)presenter).SetView(view);
+
+            presenter.OnCloseView += () => this.CloseScreenAsync(presenter.GetType(), openLastScreen: true).Forget();
+            this.historyScreen.Add((presenter, null));
+
+            if (firstScreenType != null && presenter.GetType() == firstScreenType)
+            {
+                ((IUiManagerAccess)presenter).OpenViewAsync().Forget();
+                this.CurrentScreen = presenter;
+            }
+            else
+            {
+                _ = this.CloseScreenAsync(presenter.GetType(), false);
+            }
+        }
+
+        private void InitializePopupView(IPopupView view)
+        {
+            var viewType = view.GetType();
+            var attr = viewType.GetCustomAttribute<ViewInitInSceneAttribute>(inherit: false);
+
+            if (attr == null)
+            {
+                Debug.LogError($"The {viewType.Name} does not have a ViewInitInSceneAttribute, skipping initialization.");
+                return;
+            }
+
+            var presenterType = attr.PresenterType;
+            var presenterInstance = this.screenFactory.CreateUiPresenter(presenterType);
+
+            if (presenterInstance is not IPopupPresenter presenter)
+            {
+                Debug.LogError(presenterInstance == null
+                    ? $"The {presenterType.Name} popup presenter does not exist for view {viewType.Name}"
+                    : $"The {presenterType.Name} popup presenter is not a valid type for view {viewType.Name}");
+                return;
+            }
+
+            this.popupsPresenterLoaded[presenterType] = presenter;
+            ((IUiManagerAccess)presenter).SetModel(null);
+            ((IUiManagerAccess)presenter).SetView(view);
+
+            presenter.OnCloseView += () => this.ClosePopupAsync(presenter.GetType()).Forget();
+            _ = this.ClosePopupAsync(presenter.GetType());
         }
     }
 }
