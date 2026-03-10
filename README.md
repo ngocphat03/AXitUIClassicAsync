@@ -71,7 +71,7 @@ Key characteristics:
 3. Select **Add package from git URL...**
 4. Enter the following URL:
    ```
-   https://github.com/ngocphat03/Axit.UI.ClassicAsync.git?path=/Assets/Plugins/Axit/PackageAdapters/Axit.UI.ClassicAsync#release
+   https://github.com/ngocphat03/Axit.UI.ClassicAsync.git?path=/Assets/Plugins/AXit/PackageAdapters/Axit.UI.ClassicAsync#release
    ```
 5. Click **Add**
 
