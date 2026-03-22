@@ -1,7 +1,7 @@
 {
   "name": "com.axit.ui.classic.async",
   "displayName": "Axit UI Classic Async",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "unity": "2022.3",
   "description": "Axit UI Classic Async adapter for Unity.",
   "author": {

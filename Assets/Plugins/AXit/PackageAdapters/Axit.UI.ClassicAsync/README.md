@@ -104,8 +104,9 @@ Scene
 ```
 
 **Steps:**
-1. Drag the `RootUI` prefab from `Runtime/Prefabs/Components/` into your scene
-2. That's it! The framework is ready to use
+1. **(New Workflow - Recommended)** Simply right-click anywhere in the Hierarchy and select `Axit > UI > Create RootUI` (or via the top menu `GameObject > Axit > UI > Create RootUI`).
+2. **(Manual Workflow)** Drag the `RootUI` prefab from `Runtime/Prefabs/Components/` into your scene manually.
+3. That's it! The framework is ready to use
 
 **Important Notes:**
 - Most screens and popups are loaded dynamically from prefabs in the Resources folder

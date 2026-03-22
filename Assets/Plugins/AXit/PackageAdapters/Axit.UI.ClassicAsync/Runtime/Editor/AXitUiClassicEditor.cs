@@ -1,4 +1,4 @@
-﻿#if UNITY_EDITOR
+#if UNITY_EDITOR
 namespace AxitUnityTemplate.UI.Classic.Async.Editor
 {
     using System.IO;
@@ -21,6 +21,31 @@ namespace AxitUnityTemplate.UI.Classic.Async.Editor
         private static void OpenScriptCreationWindow()
         {
             ScriptCreationWindow.ShowWindow();
+        }
+
+        [MenuItem("GameObject/Axit/UI/Create RootUI", false, 10)]
+        private static void CreateRootUIInScene()
+        {
+            // GUID of RootUI.prefab
+            var prefabPath = AssetDatabase.GUIDToAssetPath("245924270b04c3f4097d52ef4ad6581d");
+            
+            if (string.IsNullOrEmpty(prefabPath))
+            {
+                EditorUtility.DisplayDialog("Error", "Could not find RootUI prefab GUID in the package.", "OK");
+                return;
+            }
+
+            var uiBase = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+
+            if (uiBase == null)
+            {
+                EditorUtility.DisplayDialog("Error", "Could not load RootUI prefab from path: " + prefabPath, "OK");
+                return;
+            }
+
+            var variantInstance = (GameObject)PrefabUtility.InstantiatePrefab(uiBase);
+            Selection.activeGameObject = variantInstance;
+            Undo.RegisterCreatedObjectUndo(variantInstance, "Create RootUI");
         }
 
         [MenuItem("Assets/Create/Axit/UI/Create Classic UI Prefab", true)]
